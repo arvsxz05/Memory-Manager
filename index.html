@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-alpha.6/css/bootstrap.min.css" integrity="sha384-rwoIResjU2yc3z8GV/NPeZWAv56rSmLldC3R/AZzGRnGxQQKnKkoFVhFQhNUwEyJ" crossorigin="anonymous">
+	<script src="https://code.jquery.com/jquery-3.1.1.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/tether/1.4.0/js/tether.min.js" integrity="sha384-DztdAPBWPRXSA/3eYEEUWrWCy7G5KFbe8fFjk5JAIxUYHKkDx6Qin1DkWx51bBrb" crossorigin="anonymous"></script>
+	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-alpha.6/js/bootstrap.min.js" integrity="sha384-vBWWzlZJ8ea9aCX4pEW3rVHjgjt7zpkNpZk+02D9phzyeVkE+jo0ieGizqPLForn" crossorigin="anonymous"></script>
+	<script src="https://use.fontawesome.com/31f1fb129a.js"></script>
+	<script type="text/javascript" src="main.js"></script>
+	<title>Processor Management and Job Scheduling</title>
+	<style type="text/css">
+		.custom-file-control:before{
+			content: "Browse";
+		}
+		#jobInput:after{
+			content: "Select job batch file...";
+		}
+
+		#memoryInput:after{
+			content: "Select memory list file...";
+		}
+
+		/*when a value is selected, this class removes the content */
+		.custom-file-control.selected::after {
+			content: "" !important;
+		}
+
+		.custom-file {
+			overflow: hidden;
+		}
+		.custom-file-control {
+			white-space: nowrap;
+		}
+
+		body {
+			padding-top: 70px;
+			padding-bottom: 20px;
+		}
+
+		canvas{
+			border: solid 1px red;  
+			width: 100%;
+		}
+	</style>
+</head>
+<body>
+	<!-- NAVIGATION -->
+	<nav class="navbar navbar-toggleable-md fixed-top navbar-light navbar-inverse bg-success">
+		<button class="navbar-toggler navbar-toggler-right" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+			<span class="navbar-toggler-icon"></span>
+		</button>
+		<a class="navbar-brand" href="#">MEMORY ALLOCATION SIMULATION</a>
+
+		<div class="collapse navbar-collapse" id="navbarSupportedContent">
+			<ul class="navbar-nav ml-auto">
+				<li class="nav-item active">
+					<a class="nav-link" href="/">Refresh <span class="sr-only">(current)</span></a>
+				</li>
+				<li class="nav-item">
+					<a class="nav-link" href="#" id="instructions">Instructions </a>
+				</li>
+			</ul>
+		</div>
+	</nav>
+	<!-- END OF NAVIGATION -->
+	<div class="container">
+		<div class="row">
+			<div class="col-md-5">
+				<div class="row align-items-center">
+					<label class="custom-file">
+						<input type="file" class="custom-file-input" id="jobFile" aria-describedby="fileHelp">
+						<span class="custom-file-control form-control-file" id="jobInput"></span>
+					</label>
+					<a href="#">
+						<i class="fa fa-question-circle-o fa-2x for-hover" aria-hidden="true" style="padding-left: 10px;" data-container="body" data-toggle="popover" data-placement="bottom" title="Job File Requirement" data-content="Jobs are separated by new line. Each line should contain the jobs' code, execution time, job size separated by space in order. Any characters succeeding the required input per line will be discarded."></i>
+					</a>
+				</div>
+			</div>
+			<div class="col-md-5">
+				<div class="row align-items-center">
+					<label class="custom-file">
+						<input type="file" class="custom-file-input" id="inputFile" aria-describedby="fileHelp">
+						<span class="custom-file-control form-control-file" id="memoryInput"></span>
+					</label>
+					<a href="#">
+						<i class="fa fa-question-circle-o fa-2x for-hover" aria-hidden="true" style="padding-left: 10px;" data-container="body" data-toggle="popover" data-placement="bottom" title="Memory List Requirement" data-content="Memory holes are separated by new line. Each line should contain the memory holes' code and size separated by space in order. Any characters succeeding the required input per line will be discarded."></i>
+					</a>
+				</div>
+			</div>
+			<div class="col-md-2">
+				<button type="button" class="btn btn-success" id="submit-file">Calculate!</button>
+			</div>
+		</div>
+		<div id="displayer" style="padding-top: 10px;">
+			<center><h1>Memory List</h1></center>
+			<div class="card-group" id="card-holder"></div>
+			<center><h1>Waiting Queue</h1></center>
+			<div class="row" id="wait-holder"></div>
+		</div>
+	</div>
+</body>
+<script type="text/javascript">
+	$(document).ready(function() {
+		// $('#instructions').click(function() {
+		// 	window.open('/static/Lab_Exercise_2.pdf');
+		// });
+
+		var timer_display;
+
+		$(function () {
+			$('[data-toggle="popover"]').popover({
+				trigger: 'hover'
+			})
+		});
+
+		$("#submit-file").click(function() {
+			// Check for the various File API support.
+			if (window.File && window.FileReader && window.FileList && window.Blob) {
+				var f1 = document.getElementById('jobFile').files[0];
+				var f2 = document.getElementById('inputFile').files[0];
+				var system = new System(new MemoryList(), new BatchJobs());
+
+				if (f1 && f2) {
+					var r1 = new FileReader();
+					var r2 = new FileReader();
+					r1.onload = function(e) { 
+						var contents = e.target.result;
+						contents = contents.split('\n');
+						for (var i = 0; i < contents.length; i++) {
+							var line = contents[i].split(" ");
+							try {
+								if(isNaN(parseInt(line[1])) || isNaN(parseInt(line[2]))) {
+									alert("Error job file at line " + (i+1) + ": " + contents[i]);
+									return;
+								}
+								system.batchJobs.addJob(new JobEntry(line[0], parseInt(line[1]), parseInt(line[2])));
+							} catch (e) {
+								console.log(e);
+								alert("Error job file at line " + (i+1) + ": " + contents[i]);
+								return;
+							}
+						}
+						// console.log(contents);
+					}
+					r2.onload = function(e) { 
+						var contents = e.target.result;
+						contents = contents.split('\n');
+						for (var i = 0; i < contents.length; i++) {
+							var line = contents[i].split(" ");
+							try {
+								if(isNaN(parseInt(line[1]))) {
+									alert("Error memory file at line " + (i+1) + ": " + contents[i]);
+									return;
+								}
+								system.memoryList.addMemory(new MemoryHole(line[0], parseInt(line[1])));
+							} catch (e) {
+								console.log(e);
+								alert("Error memory file at line " + (i+1) + ": " + contents[i]);
+								return;
+							}
+						}
+						$("#submit-file").attr("disabled", "disabled");
+						// console.log(contents);
+						console.log(system);
+						system.performFirstFit(true);
+						timer_display = setInterval(function() {
+							$("#card-holder").empty();
+							$("#wait-holder").empty();
+							for (var i = 0; i < system.memoryList.memories.length; i++) {
+								if(system.memoryList.memories[i].allocated) {
+									$("#card-holder").append('<div class="card card-inverse text-center" style="background-color: ' + system.memoryList.memories[i].allocated.color + '; border-color: ' + system.memoryList.memories[i].allocated.color + ';">'
+									+	'<div class="card-block" style="padding: 5px;">'
+									+		'<h6 class="card-title"><small>Memory Block ' + system.memoryList.memories[i].code + '</small></h6>'
+									+		'<div class="row">'
+									+			'<div class="col-md-6"><p class="card-text"><small>Job Code:</small></p></div>'
+									+			'<div class="col-md-6"><p class="card-text"><small>' + system.memoryList.memories[i].allocated.code + '</small></p></div>'
+									+		'</div>'
+									+		'<div class="row">'
+									+			'<div class="col-md-6"><p class="card-text"><small>Time Left:</small></p></div>'
+									+			'<div class="col-md-6"><p class="card-text"><small>' + system.memoryList.memories[i].allocated.remaining + '</small></p></div>'
+									+		'</div>'
+									+		'<div class="row">'
+									+			'<div class="col-md-6"><p class="card-text"><small>Fragment:</small></p></div>'
+									+			'<div class="col-md-6"><p class="card-text"><small>' + (system.memoryList.memories[i].size - system.memoryList.memories[i].allocated.size) + '</small></p></div>'
+									+		'</div>'
+									+	'</div>'
+									+	'<div class="card-footer text-muted" style="padding: 0px;">'
+									+		'<p class="card-text"><small>' + system.memoryList.memories[i].size + '</small></p>'
+									+	'</div>'
+									+'</div>');
+								} else {
+									$("#card-holder").append('<div class="card text-center">'
+									+	'<div class="card-block" style="padding: 5px;">'
+									+		'<h6 class="card-title"><small>Memory Block ' + system.memoryList.memories[i].code + '</small></h6>'
+									+		'<div class="row">'
+									+			'<div class="col-md-6"><p class="card-text"><small>Job Code:</small></p></div>'
+									+			'<div class="col-md-6"><p class="card-text"><small>none</small></p></div>'
+									+		'</div>'
+									+		'<div class="row">'
+									+			'<div class="col-md-6"><p class="card-text"><small>Time Left:</small></p></div>'
+									+			'<div class="col-md-6"><p class="card-text"><small>none</small></p></div>'
+									+		'</div>'
+									+		'<div class="row">'
+									+			'<div class="col-md-6"><p class="card-text"><small>Fragment:</small></p></div>'
+									+			'<div class="col-md-6"><p class="card-text"><small>none</small></p></div>'
+									+		'</div>'
+									+	'</div>'
+									+	'<div class="card-footer text-muted" style="padding: 0px;">'
+									+		'<p class="card-text"><small>' + system.memoryList.memories[i].size + '</small></p>'
+									+	'</div>'
+									+'</div>');
+								}
+							}
+							for (var i = 0; i < system.unallocatedJobs.length; i++) {
+								$("#wait-holder").append('<div class="card card-inverse text-center" style="background-color: ' + system.unallocatedJobs[i].color + '; border-color: ' + system.unallocatedJobs[i].code + ';">'
+								+	'<div class="card-block" style="padding: 5px;">'
+								+		'<h6 class="card-title"><small>Job ' + system.unallocatedJobs[i].code + '</small></h6>'
+								// +		'<div class="row">'
+								// +			'<div class="col-md-6"><p class="card-text"><small>Job Code:</small></p></div>'
+								// +			'<div class="col-md-6"><p class="card-text"><small>' + system.unallocatedJobs[i].code + '</small></p></div>'
+								// +		'</div>'
+								+		'<div class="row">'
+								+			'<div class="col-md-6"><p class="card-text"><small>Time Needed:</small></p></div>'
+								+			'<div class="col-md-6"><p class="card-text"><small>' + system.unallocatedJobs[i].remaining + '</small></p></div>'
+								+		'</div>'
+								+		'<div class="row">'
+								+			'<div class="col-md-6"><p class="card-text"><small>Waiting Time:</small></p></div>'
+								+			'<div class="col-md-6"><p class="card-text"><small>' + system.unallocatedJobs[i].waitingTime + '</small></p></div>'
+								+		'</div>'
+								+	'</div>'
+								+'</div>');
+							}
+							if (system.timerCounter === null) {
+								clearInterval(timer_display);
+								$("#submit-file").removeAttr("disabled");
+							}
+						}, 1000);
+					}
+					r1.readAsText(f1);
+					r2.readAsText(f2);
+				} else { 
+					alert("Failed to load file");
+				}
+			} else {
+				alert('The File APIs are not fully supported in this browser.');
+			}
+		});
+	});
+</script>
+</html>
