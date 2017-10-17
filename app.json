@@ -1,0 +1,11 @@
+{
+  "name": "Memory Management",
+  "description": "Lab Exercise 3 for CMSC 125",
+  "repository": "https://github.com/arvsxz05/Memory-Manager.git",
+  "keywords": [
+    "Memory",
+    "Management",
+    "Operating System",
+  ],
+  "image": "heroku/nodejs"
+}

@@ -6,8 +6,8 @@
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/tether/1.4.0/js/tether.min.js" integrity="sha384-DztdAPBWPRXSA/3eYEEUWrWCy7G5KFbe8fFjk5JAIxUYHKkDx6Qin1DkWx51bBrb" crossorigin="anonymous"></script>
 	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-alpha.6/js/bootstrap.min.js" integrity="sha384-vBWWzlZJ8ea9aCX4pEW3rVHjgjt7zpkNpZk+02D9phzyeVkE+jo0ieGizqPLForn" crossorigin="anonymous"></script>
 	<script src="https://use.fontawesome.com/31f1fb129a.js"></script>
-	<script type="text/javascript" src="main.js"></script>
-	<title>Processor Management and Job Scheduling</title>
+	<script type="text/javascript" src="/static/main.js"></script>
+	<title>Memory Management and Allocation</title>
 	<style type="text/css">
 		.custom-file-control:before{
 			content: "Browse";
@@ -28,17 +28,14 @@
 		.custom-file {
 			overflow: hidden;
 		}
-		.custom-file-control {
-			white-space: nowrap;
-		}
 
 		body {
 			padding-top: 70px;
 			padding-bottom: 20px;
 		}
 
-		canvas{
-			border: solid 1px red;  
+		canvas {
+			border: solid 1px red;
 			width: 100%;
 		}
 	</style>
@@ -65,7 +62,7 @@
 	<!-- END OF NAVIGATION -->
 	<div class="container">
 		<div class="row">
-			<div class="col-md-5">
+			<div class="col-md-6">
 				<div class="row align-items-center">
 					<label class="custom-file">
 						<input type="file" class="custom-file-input" id="jobFile" aria-describedby="fileHelp">
@@ -76,7 +73,7 @@
 					</a>
 				</div>
 			</div>
-			<div class="col-md-5">
+			<div class="col-md-6">
 				<div class="row align-items-center">
 					<label class="custom-file">
 						<input type="file" class="custom-file-input" id="inputFile" aria-describedby="fileHelp">
@@ -87,23 +84,31 @@
 					</a>
 				</div>
 			</div>
-			<div class="col-md-2">
-				<button type="button" class="btn btn-success" id="submit-file">Calculate!</button>
+		</div>
+		<div class="row" style="padding: 10px">
+			<div class="col-md-4">
+				<button type="button" class="btn btn-success btn-block perform" id="first-fit">Simulate First Fit!</button>
+			</div>
+			<div class="col-md-4">
+				<button type="button" class="btn btn-success btn-block perform" id="best-fit" style="background-color: #127C06; border-color: #127C06">Simulate Best Fit!</button>
+			</div>
+			<div class="col-md-4">
+				<button type="button" class="btn btn-success btn-block perform" id="worst-fit" style="background-color: #44FE2F; border-color: #44FE2F">Simulate Worst Fit!</button>
 			</div>
 		</div>
-		<div id="displayer" style="padding-top: 10px;">
-			<center><h1>Memory List</h1></center>
-			<div class="card-group" id="card-holder"></div>
-			<center><h1>Waiting Queue</h1></center>
-			<div class="row" id="wait-holder"></div>
-		</div>
+	</div>
+	<div id="displayer" style="padding-top: 10px; padding-left: 50px; padding-right: 50px;" class="hide-first">
+		<center><h1>Memory List</h1></center>
+		<div class="card-group" id="card-holder"></div>
+		<center><h1 style="padding: 10px;">Waiting Queue</h1></center>
+		<div class="row" id="wait-holder"></div>
 	</div>
 </body>
 <script type="text/javascript">
 	$(document).ready(function() {
-		// $('#instructions').click(function() {
-		// 	window.open('/static/Lab_Exercise_2.pdf');
-		// });
+		$('#instructions').click(function() {
+			window.open('/static/Lab_Exercise_3.pdf');
+		});
 
 		var timer_display;
 
@@ -113,7 +118,13 @@
 			})
 		});
 
-		$("#submit-file").click(function() {
+		$(".hide-first").css("display", "none");
+
+		$('.custom-file-input').on('change',function(){
+			$(this).next('.form-control-file').addClass("selected").html($(this).val().replace(/^.*\\/, ""));
+		});
+
+		$(".perform").click(function(beb) {
 			// Check for the various File API support.
 			if (window.File && window.FileReader && window.FileList && window.Blob) {
 				var f1 = document.getElementById('jobFile').files[0];
@@ -142,7 +153,7 @@
 						}
 						// console.log(contents);
 					}
-					r2.onload = function(e) { 
+					r2.onload = function(e) {
 						var contents = e.target.result;
 						contents = contents.split('\n');
 						for (var i = 0; i < contents.length; i++) {
@@ -159,10 +170,20 @@
 								return;
 							}
 						}
-						$("#submit-file").attr("disabled", "disabled");
-						// console.log(contents);
+						$(".perform").attr("disabled", "disabled");
+						$(".hide-first").css("display", "block");
 						console.log(system);
-						system.performFirstFit(true);
+						if(beb.target.id == "first-fit")
+							system.performFirstFit(true);
+						else if (beb.target.id == "best-fit")
+							system.performBestFit(true);
+						else if (beb.target.id == "worst-fit")
+							system.performWorstFit(true);
+						else {
+							alert("Something went wrong!");
+							return;
+						}
+
 						timer_display = setInterval(function() {
 							$("#card-holder").empty();
 							$("#wait-holder").empty();
@@ -215,31 +236,27 @@
 								$("#wait-holder").append('<div class="card card-inverse text-center" style="background-color: ' + system.unallocatedJobs[i].color + '; border-color: ' + system.unallocatedJobs[i].code + ';">'
 								+	'<div class="card-block" style="padding: 5px;">'
 								+		'<h6 class="card-title"><small>Job ' + system.unallocatedJobs[i].code + '</small></h6>'
-								// +		'<div class="row">'
-								// +			'<div class="col-md-6"><p class="card-text"><small>Job Code:</small></p></div>'
-								// +			'<div class="col-md-6"><p class="card-text"><small>' + system.unallocatedJobs[i].code + '</small></p></div>'
-								// +		'</div>'
 								+		'<div class="row">'
 								+			'<div class="col-md-6"><p class="card-text"><small>Time Needed:</small></p></div>'
 								+			'<div class="col-md-6"><p class="card-text"><small>' + system.unallocatedJobs[i].remaining + '</small></p></div>'
 								+		'</div>'
 								+		'<div class="row">'
-								+			'<div class="col-md-6"><p class="card-text"><small>Waiting Time:</small></p></div>'
-								+			'<div class="col-md-6"><p class="card-text"><small>' + system.unallocatedJobs[i].waitingTime + '</small></p></div>'
+								+			'<div class="col-md-6"><p class="card-text"><small>Size Needed:</small></p></div>'
+								+			'<div class="col-md-6"><p class="card-text"><small>' + system.unallocatedJobs[i].size + '</small></p></div>'
 								+		'</div>'
 								+	'</div>'
 								+'</div>');
 							}
 							if (system.timerCounter === null) {
 								clearInterval(timer_display);
-								$("#submit-file").removeAttr("disabled");
+								$(".perform").removeAttr("disabled");
 							}
 						}, 1000);
 					}
 					r1.readAsText(f1);
 					r2.readAsText(f2);
 				} else { 
-					alert("Failed to load file");
+					alert("Failed to load file. Please provide input files first.");
 				}
 			} else {
 				alert('The File APIs are not fully supported in this browser.');
