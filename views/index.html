@@ -102,6 +102,10 @@
 		<div class="card-group" id="card-holder"></div>
 		<center><h1 style="padding: 10px;">Waiting Queue</h1></center>
 		<div class="row" id="wait-holder"></div>
+		<div id="summary" style="display: none;">
+			<center><h1>Summary</h1></center>
+			<div id="summ-holder"></div>
+		</div>
 	</div>
 </body>
 <script type="text/javascript">
@@ -126,6 +130,8 @@
 
 		$(".perform").click(function(beb) {
 			// Check for the various File API support.
+			$("#summary").css("display", "none");
+			$(".hide-first").css("display", "none");
 			if (window.File && window.FileReader && window.FileList && window.Blob) {
 				var f1 = document.getElementById('jobFile').files[0];
 				var f2 = document.getElementById('inputFile').files[0];
@@ -250,6 +256,17 @@
 							if (system.timerCounter === null) {
 								clearInterval(timer_display);
 								$(".perform").removeAttr("disabled");
+								$("#summary").css("display", "block");
+								$("#summ-holder").html("");
+								var throughput = (system.batchJobs.joblist.length-system.unallocatedJobs.length)/system.timer;
+								console.log(throughput)
+								$("#summ-holder").append('<div class="row">'
+									+ '<div class="col-sm-3"><p>Execution Time: ' + system.timer + '</p></div>'
+									+ '<div class="col-sm-3"><p>Throughput: ' + throughput + '</p></div>'
+									+ '<div class="col-sm-3"><p>No. Jobs Unallocated: ' + system.unallocatedJobs.length + '</p></div>'
+									+ '<div class="col-sm-3"><p>Ave. Waiting Time: ' + system.aveWaitingTime + '</p></div>'
+									+ '</div>'
+									+ '<div><p>Storage Util: ' + system.memoryUtil + '</p></div>')
 							}
 						}, 1000);
 					}

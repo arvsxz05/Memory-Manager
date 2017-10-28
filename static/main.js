@@ -98,11 +98,17 @@ class System {
 		this.batchJobs = batchJobs;
 		this.timerCounter = null
 		this.unallocatedJobs = [];
+		this.timer = 0;
+		this.aveWaitingTime = 0;
+		this.memoryUtil = 0;
 	}
 
 	performFirstFit(realTime) {
+		this.aveWaitingTime = 0;
 		this.memoryList.clearAllocations();
 		this.batchJobs.resetRemaining();
+		this.timer = 0;
+		this.memoryUtil = 0;
 		var interval = 10;
 		var ongoingJobs = 0;
 		var internalFragmentation = 0;
@@ -127,7 +133,18 @@ class System {
 		}
 
 		this.timerCounter = setInterval(function() {
+			this.timer ++;
 			var j = 0;
+
+			var accumulate_running = 0;
+			for (var i = this.memoryList.memories.length - 1; i >= 0; i--) {
+				if(this.memoryList.memories[i].allocated != null)
+					accumulate_running ++;
+			}
+			// console.log(accumulate_running)
+			this.memoryUtil += ((accumulate_running / this.memoryList.memories.length) * 100);
+			// console.log(this.memoryUtil)
+			
 			for (var i = 0; i < this.unallocatedJobs.length; i++) {
 				this.unallocatedJobs[i].waitingTime += 1;
 			}
@@ -152,26 +169,33 @@ class System {
 			}
 
 			if (ongoingJobs == 0) {
-				var aveWaitingTime = 0;
+				this.aveWaitingTime = 0;
 				for (var i = this.batchJobs.joblist.length - 1; i >= 0; i--) {
-					aveWaitingTime += this.batchJobs.joblist[i].waitingTime;
+					this.aveWaitingTime += this.batchJobs.joblist[i].waitingTime;
 				}
-				console.log(this);
-				console.log(aveWaitingTime + " " + internalFragmentation);
+				// console.log(this);
+				for (var i = this.unallocatedJobs.length - 1; i >= 0; i--) {
+					this.aveWaitingTime -= this.unallocatedJobs[i].waitingTime;
+				}
+				this.memoryUtil = this.memoryUtil / this.timer;
+				this.aveWaitingTime = this.aveWaitingTime/(this.batchJobs.joblist.length-this.unallocatedJobs.length);
+				console.log(this.aveWaitingTime + " " + internalFragmentation + " " + this.timer);
 				clearInterval(this.timerCounter);
 				this.memoryList.clearAllocations();
 				this.batchJobs.resetRemaining();
 				this.timerCounter = null;
-				return;
 			}
 		}.bind(this), interval);
 	}
 
 	performBestFit(realTime) {
+		this.aveWaitingTime = 0;
 		this.memoryList.clearAllocations();
 		this.batchJobs.resetRemaining();
 		this.memoryList.sortMemories(true);
-		this.batchJobs.sortJobs(false);
+		this.timer = 0;
+		this.memoryUtil = 0;
+		// this.batchJobs.sortJobs(false);
 		var interval = 10;
 		var ongoingJobs = 0;
 		var internalFragmentation = 0;
@@ -197,6 +221,17 @@ class System {
 
 		this.timerCounter = setInterval(function() {
 			var j = 0;
+			this.timer ++;
+
+			var accumulate_running = 0;
+			for (var i = this.memoryList.memories.length - 1; i >= 0; i--) {
+				if(this.memoryList.memories[i].allocated != null)
+					accumulate_running ++;
+			}
+			// console.log(accumulate_running)
+			this.memoryUtil += ((accumulate_running / this.memoryList.memories.length) * 100);
+			// console.log(this.memoryUtil)
+
 			for (var i = 0; i < this.unallocatedJobs.length; i++) {
 				this.unallocatedJobs[i].waitingTime += 1;
 			}
@@ -221,12 +256,17 @@ class System {
 			}
 
 			if (ongoingJobs == 0) {
-				var aveWaitingTime = 0;
+				this.aveWaitingTime = 0;
 				for (var i = this.batchJobs.joblist.length - 1; i >= 0; i--) {
-					aveWaitingTime += this.batchJobs.joblist[i].waitingTime;
+					this.aveWaitingTime += this.batchJobs.joblist[i].waitingTime;
 				}
-				console.log(this);
-				console.log(aveWaitingTime + " " + internalFragmentation);
+				// console.log(this);
+				for (var i = this.unallocatedJobs.length - 1; i >= 0; i--) {
+					this.aveWaitingTime -= this.unallocatedJobs[i].waitingTime;
+				}
+				this.memoryUtil = this.memoryUtil / this.timer;
+				this.aveWaitingTime = this.aveWaitingTime/(this.batchJobs.joblist.length-this.unallocatedJobs.length);
+				console.log(this.aveWaitingTime + " " + internalFragmentation + " " + this.timer);
 				clearInterval(this.timerCounter);
 				this.memoryList.clearAllocations();
 				this.batchJobs.resetRemaining();
@@ -236,10 +276,13 @@ class System {
 	}
 
 	performWorstFit(realTime) {
+		this.aveWaitingTime = 0;
 		this.memoryList.clearAllocations();
 		this.batchJobs.resetRemaining();
 		this.memoryList.sortMemories(false);
-		this.batchJobs.sortJobs(true);
+		this.timer = 0;
+		this.memoryUtil = 0;
+		// this.batchJobs.sortJobs(true);
 		var interval = 10;
 		var ongoingJobs = 0;
 		var internalFragmentation = 0;
@@ -265,6 +308,17 @@ class System {
 
 		this.timerCounter = setInterval(function() {
 			var j = 0;
+			this.timer ++;
+
+			var accumulate_running = 0;
+			for (var i = this.memoryList.memories.length - 1; i >= 0; i--) {
+				if(this.memoryList.memories[i].allocated != null)
+					accumulate_running ++;
+			}
+			// console.log(accumulate_running)
+			this.memoryUtil += ((accumulate_running / this.memoryList.memories.length) * 100);
+			// console.log(this.memoryUtil)
+
 			for (var i = 0; i < this.unallocatedJobs.length; i++) {
 				this.unallocatedJobs[i].waitingTime += 1;
 			}
@@ -289,12 +343,17 @@ class System {
 			}
 
 			if (ongoingJobs == 0) {
-				var aveWaitingTime = 0;
+				this.aveWaitingTime = 0;
 				for (var i = this.batchJobs.joblist.length - 1; i >= 0; i--) {
-					aveWaitingTime += this.batchJobs.joblist[i].waitingTime;
+					this.aveWaitingTime += this.batchJobs.joblist[i].waitingTime;
 				}
-				console.log(this);
-				console.log(aveWaitingTime + " " + internalFragmentation);
+				// console.log(this);
+				for (var i = this.unallocatedJobs.length - 1; i >= 0; i--) {
+					this.aveWaitingTime -= this.unallocatedJobs[i].waitingTime;
+				}
+				this.memoryUtil = this.memoryUtil / this.timer;
+				this.aveWaitingTime = this.aveWaitingTime/(this.batchJobs.joblist.length-this.unallocatedJobs.length);
+				console.log(this.memoryUtil + " " + this.aveWaitingTime + " " + internalFragmentation + " " + this.timer);
 				clearInterval(this.timerCounter);
 				this.memoryList.clearAllocations();
 				this.batchJobs.resetRemaining();
